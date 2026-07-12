@@ -138,6 +138,25 @@ class RecipeCard extends StatelessWidget {
                           ),
                         ),
                       ),
+                    if (recipe.missingCount != null && recipe.missingCount! > 0)
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Align(
+                          alignment: Alignment.topRight,
+                          child: Chip(
+                            avatar: const Icon(Icons.shopping_bag_outlined,
+                                size: 16),
+                            label: Text(
+                              AppLocalizations.of(context)!
+                                  .missingIngredientsCount(
+                                      recipe.missingCount!),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

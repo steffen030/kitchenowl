@@ -2,7 +2,7 @@ from __future__ import annotations
 import enum
 from typing import Any, Self, List, TYPE_CHECKING, cast
 
-from sqlalchemy import func
+from sqlalchemy import and_, case, func, literal
 from app import db
 from app.helpers import DbModelAuthorizeMixin
 from .item import Item
@@ -374,6 +374,73 @@ class Recipe(Model, DbModelAuthorizeMixin):
         )
         if query_options:
             query = query.options(*query_options)
+        return query.all()
+
+    @classmethod
+    def filter_by_items(
+        cls,
+        household_id: int,
+        include_ids: list[int],
+        exclude_ids: list[int],
+        tags: list[str],
+        max_missing: int = 0,
+    ) -> list[tuple[Self, int]]:
+        """Filter household recipes by ingredient include/exclude sets.
+
+        Returns (Recipe, missing_count) pairs sorted cookable-first, then by
+        ascending missing_count, then by name.  missing_count counts required
+        items (optional=False) whose id is not in include_ids.
+        """
+        if include_ids:
+            missing_case = case(
+                (
+                    and_(
+                        RecipeItems.optional == False,  # noqa: E712
+                        RecipeItems.item_id.notin_(include_ids),
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+            missing_expr = func.coalesce(func.sum(missing_case), 0)
+        else:
+            # No have-set given: treat all recipes as fully cookable (missing=0).
+            # Only the exclude/tag filters apply.
+            missing_expr = literal(0)
+
+        missing_count_col = missing_expr.label("missing_count")
+
+        query = (
+            db.session.query(cls, missing_count_col)
+            .outerjoin(RecipeItems, RecipeItems.recipe_id == cls.id)
+            .filter(cls.household_id == household_id)
+            .group_by(cls.id)
+            .having(missing_expr <= max_missing)
+        )
+
+        if exclude_ids:
+            exclude_sq = (
+                db.session.query(RecipeItems.recipe_id)
+                .filter(RecipeItems.item_id.in_(exclude_ids))
+                .scalar_subquery()
+            )
+            query = query.filter(cls.id.notin_(exclude_sq))
+
+        if tags:
+            tag_sq = (
+                db.session.query(RecipeTags.recipe_id)
+                .join(RecipeTags.tag)
+                .filter(Tag.name.in_(tags))
+                .scalar_subquery()
+            )
+            query = query.filter(cls.id.in_(tag_sq))
+
+        query = query.order_by(
+            case((missing_expr == 0, 0), else_=1),
+            missing_expr,
+            cls.name,
+        )
+
         return query.all()
 
 

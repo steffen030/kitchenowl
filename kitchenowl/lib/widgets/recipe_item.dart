@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kitchenowl/cubits/household_cubit.dart';
 import 'package:kitchenowl/enums/update_enum.dart';
+import 'package:kitchenowl/kitchenowl.dart';
 import 'package:kitchenowl/models/household.dart';
 import 'package:kitchenowl/models/recipe.dart';
 import 'package:kitchenowl/pages/recipe_page.dart';
@@ -46,7 +47,24 @@ class RecipeItemWidget extends StatelessWidget {
           title: Text(recipe.name),
           trailing: const Icon(Icons.arrow_right_rounded),
           selected: recipe.isPlanned,
-          subtitle: description,
+          subtitle: recipe.missingCount != null && recipe.missingCount! > 0
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.shopping_bag_outlined, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      AppLocalizations.of(context)!
+                          .missingIngredientsCount(recipe.missingCount!),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    if (description != null) ...[
+                      const SizedBox(width: 8),
+                      description!,
+                    ],
+                  ],
+                )
+              : description,
           onTap: (kIsWeb || Platform.isIOS)
               ? () async {
                   final household =

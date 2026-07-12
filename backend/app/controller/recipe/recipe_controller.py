@@ -318,15 +318,42 @@ def searchRecipeInHouseholdByName(args, household_id):
 @authorize_household()
 @validate_args(GetAllFilterRequest)
 def getAllFiltered(args, household_id):
-    use_slim = args["details"] == "slim"
+    include_ids = args.get("items_include", [])
+    exclude_ids = args.get("items_exclude", [])
+    max_missing = args.get("max_missing", 0)
+    tags = args.get("filter") or []
+    use_slim = args.get("details", "full") == "slim"
+
+    if include_ids or exclude_ids:
+        rows = Recipe.filter_by_items(
+            household_id,
+            include_ids=include_ids,
+            exclude_ids=exclude_ids,
+            tags=tags,
+            max_missing=max_missing,
+        )
+        result = []
+        for recipe, missing_count in rows:
+            d = recipe.obj_to_full_dict()
+            d["missing_count"] = missing_count
+            result.append(d)
+        return jsonify(result)
+
     serializer = Recipe.obj_to_slim_dict if use_slim else Recipe.obj_to_full_dict
     query_opts = [noload(Recipe.items)] if use_slim else []
-    return jsonify(
-        [
-            serializer(e)
-            for e in Recipe.all_by_name_with_filter(household_id, args["filter"], query_options=query_opts)
-        ]
-    )
+    if tags:
+        recipes = Recipe.all_by_name_with_filter(
+            household_id, tags, query_options=query_opts
+        )
+    else:
+        # No tag filter: return the full household recipe list (back-compat).
+        query = Recipe.query.filter(Recipe.household_id == household_id).order_by(
+            Recipe.name
+        )
+        if query_opts:
+            query = query.options(*query_opts)
+        recipes = query.all()
+    return jsonify([serializer(e) for e in recipes])
 
 
 @recipeHousehold.route("/scrape", methods=["GET", "POST"])

@@ -116,6 +116,7 @@
   "@emailUsed": {},
   "@error": {},
   "@excludeFromStatistics": {},
+  "@excludeIngredients": {},
   "@expense": {},
   "@expenseAdd": {},
   "@expenseAmount": {},
@@ -148,6 +149,7 @@
       }
     }
   },
+  "@filterByIngredients": {},
   "@forceOfflineMode": {},
   "@gallery": {},
   "@general": {},
@@ -192,6 +194,7 @@
   "@income": {},
   "@ingredients": {},
   "@ingredientsOptional": {},
+  "@ingredientsIHave": {},
   "@itemDelete": {},
   "@itemDeleteConfirmation": {
     "placeholders": {
@@ -268,6 +271,14 @@
   "@members": {},
   "@merge": {},
   "@minutesAbbrev": {},
+  "@missingIngredientsCount": {
+    "placeholders": {
+      "count": {
+        "example": "2",
+        "type": "int"
+      }
+    }
+  },
   "@moneyTransfer": {},
   "@monthly": {},
   "@more": {},
@@ -448,6 +459,14 @@
   "@shoppingListEmpty": {},
   "@shoppingListStyle": {},
   "@shoppingLists": {},
+  "@showRecipesMissingUpTo": {
+    "placeholders": {
+      "count": {
+        "example": "2",
+        "type": "int"
+      }
+    }
+  },
   "@signInWith": {
     "placeholders": {
       "provider": {
@@ -619,6 +638,7 @@
   "emailUsed": "The email is already associated with an account",
   "error": "An error occurred",
   "excludeFromStatistics": "Exclude from statistics",
+  "excludeIngredients": "Exclude ingredients",
   "expense": "Expense",
   "expenseAdd": "Add expense",
   "expenseAmount": "Amount",
@@ -637,6 +657,7 @@
   "features": "Features",
   "fetchingWebsite": "Fetching website...",
   "fieldCannotBeEmpty": "{field} cannot be empty.",
+  "filterByIngredients": "Filter by ingredients",
   "forceOfflineMode": "Force offline mode",
   "gallery": "Gallery",
   "general": "General",
@@ -661,6 +682,7 @@
   "income": "Income",
   "ingredients": "Ingredients",
   "ingredientsOptional": "Optional ingredients",
+  "ingredientsIHave": "Ingredients I have",
   "itemDelete": "Delete item",
   "itemDeleteConfirmation": "Are you sure you want to delete {item}? This will remove the item from any recipe containing it.",
   "itemRemoveInteraction": "Remove item interaction",
@@ -701,6 +723,7 @@
   "members": "Members",
   "merge": "Merge",
   "minutesAbbrev": "min",
+  "missingIngredientsCount": "Missing {count}",
   "moneyTransfer": "Money transfer",
   "monthly": "Monthly",
   "more": "More",
@@ -810,6 +833,7 @@
   "shoppingListStyle": "Shopping list style",
   "shoppingLists": "Shopping lists",
   "showPastPlans": "Show all plans",
+  "showRecipesMissingUpTo": "Show recipes missing up to {count} ingredient(s)",
   "signInWith": "Sign in with {provider}",
   "signup": "Sign up",
   "skip": "Skip",

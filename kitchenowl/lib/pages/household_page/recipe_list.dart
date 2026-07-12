@@ -3,10 +3,12 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kitchenowl/app.dart';
+import 'package:kitchenowl/cubits/household_cubit.dart';
 import 'package:kitchenowl/cubits/recipe_list_cubit.dart';
 import 'package:kitchenowl/kitchenowl.dart';
 import 'package:kitchenowl/widgets/index_bar.dart';
 import 'package:kitchenowl/widgets/choice_scroll.dart';
+import 'package:kitchenowl/widgets/ingredient_filter_sheet.dart';
 import 'package:kitchenowl/widgets/recipe_card.dart';
 import 'package:kitchenowl/widgets/recipe_item.dart';
 
@@ -92,25 +94,60 @@ class _RecipeListPageState extends State<RecipeListPage> {
                     }
                   }
                 },
-                child: SearchTextField(
-                  controller: searchController,
-                  clearOnSubmit: false,
-                  onSearch: (s) => cubit.search(s),
-                  textInputAction: TextInputAction.search,
-                  suffix: !App.isOffline
-                      ? IconButton(
-                          onPressed: () => context.go(
-                            "/household/${cubit.household.id}/recipes/discover",
-                            extra: cubit.household,
+                child: BlocBuilder<RecipeListCubit, RecipeListState>(
+                  bloc: cubit,
+                  buildWhen: (prev, next) =>
+                      (prev is FilteredListRecipeListState) !=
+                          (next is FilteredListRecipeListState) ||
+                      (prev is FilteredListRecipeListState &&
+                          next is FilteredListRecipeListState &&
+                          prev.hasIngredientFilter !=
+                              next.hasIngredientFilter),
+                  builder: (context, state) {
+                    final hasIngFilter = state is FilteredListRecipeListState &&
+                        state.hasIngredientFilter;
+                    return SearchTextField(
+                      controller: searchController,
+                      clearOnSubmit: false,
+                      onSearch: (s) => cubit.search(s),
+                      textInputAction: TextInputAction.search,
+                      suffix: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () => showIngredientFilterSheet(
+                              context,
+                              cubit,
+                              context
+                                  .read<HouseholdCubit>()
+                                  .state
+                                  .household,
+                            ),
+                            tooltip:
+                                AppLocalizations.of(context)!.filterByIngredients,
+                            icon: Icon(
+                              Icons.blender_rounded,
+                              color: hasIngFilter
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.grey,
+                            ),
                           ),
-                          tooltip: AppLocalizations.of(context)!.discover,
-                          icon: const Icon(
-                            Icons.auto_awesome_rounded,
-                            color: Colors.grey,
-                          ),
-                        )
-                      : null,
-                ),
+                          if (!App.isOffline)
+                            IconButton(
+                              onPressed: () => context.go(
+                                "/household/${cubit.household.id}/recipes/discover",
+                                extra: cubit.household,
+                              ),
+                              tooltip: AppLocalizations.of(context)!.discover,
+                              icon: const Icon(
+                                Icons.auto_awesome_rounded,
+                                color: Colors.grey,
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
               ),
             ),
           ),
@@ -130,15 +167,21 @@ class _RecipeListPageState extends State<RecipeListPage> {
                         : Icons.grid_view_rounded),
                   ),
                 );
-                if (state is! ListRecipeListState ||
-                    state.tags.isEmpty ||
-                    state is SearchRecipeListState) {
+                final hasChips = state is ListRecipeListState &&
+                    state is! SearchRecipeListState &&
+                    (state.tags.isNotEmpty ||
+                        (state is FilteredListRecipeListState &&
+                            state.hasIngredientFilter));
+
+                if (!hasChips) {
                   header = Align(
                     key: headerKey,
                     alignment: Alignment.topRight,
                     child: header,
                   );
                 } else {
+                  final filteredState =
+                      state is FilteredListRecipeListState ? state : null;
                   header = Align(
                     key: headerKey,
                     alignment: Alignment.centerLeft,
@@ -146,43 +189,82 @@ class _RecipeListPageState extends State<RecipeListPage> {
                       padding: const EdgeInsets.only(bottom: 6),
                       child: LeftRightWrap(
                         crossAxisSpacing: 6,
-                        left: ChoiceScroll(
-                            children: state.tags
-                                .sorted((a, b) =>
-                                    (state is FilteredListRecipeListState)
-                                        ? (state.selectedTags.contains(a)
-                                                ? 0
-                                                : 1)
-                                            .compareTo(
-                                                state.selectedTags.contains(b)
-                                                    ? 0
-                                                    : 1)
-                                        : 0)
-                                .map((tag) {
-                          return Padding(
-                            key: ValueKey(tag.id),
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: FilterChip(
-                              label: Text(
-                                tag.name,
-                                style: TextStyle(
-                                  color: (state
-                                              is FilteredListRecipeListState) &&
-                                          state.selectedTags.contains(tag)
-                                      ? Theme.of(context).colorScheme.onPrimary
-                                      : null,
+                        left: ChoiceScroll(children: [
+                          // Tag chips
+                          ...state.tags
+                              .sorted((a, b) => filteredState != null
+                                  ? filteredState.selectedTags
+                                      .contains(a)
+                                      .hashCode
+                                      .compareTo(filteredState.selectedTags
+                                          .contains(b)
+                                          .hashCode)
+                                  : 0)
+                              .map((tag) {
+                            return Padding(
+                              key: ValueKey('tag_${tag.id}'),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                              child: FilterChip(
+                                label: Text(
+                                  tag.name,
+                                  style: TextStyle(
+                                    color: filteredState != null &&
+                                            filteredState.selectedTags
+                                                .contains(tag)
+                                        ? Theme.of(context)
+                                            .colorScheme
+                                            .onPrimary
+                                        : null,
+                                  ),
                                 ),
+                                selected: filteredState != null &&
+                                    filteredState.selectedTags.contains(tag),
+                                selectedColor:
+                                    Theme.of(context).colorScheme.secondary,
+                                onSelected: (bool selected) =>
+                                    cubit.tagSelected(tag, selected),
                               ),
-                              selected:
-                                  (state is FilteredListRecipeListState) &&
-                                      state.selectedTags.contains(tag),
-                              selectedColor:
-                                  Theme.of(context).colorScheme.secondary,
-                              onSelected: (bool selected) =>
-                                  cubit.tagSelected(tag, selected),
-                            ),
-                          );
-                        }).toList()),
+                            );
+                          }),
+                          // Include ingredient chips
+                          if (filteredState != null)
+                            ...filteredState.includeItems.map((item) => Padding(
+                                  key: ValueKey('inc_${item.id}'),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 4),
+                                  child: FilterChip(
+                                    avatar: const Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 16),
+                                    label: Text(item.name),
+                                    selected: true,
+                                    selectedColor: Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer,
+                                    onSelected: (_) =>
+                                        cubit.setIncludeItem(item, false),
+                                  ),
+                                )),
+                          // Exclude ingredient chips
+                          if (filteredState != null)
+                            ...filteredState.excludeItems.map((item) => Padding(
+                                  key: ValueKey('exc_${item.id}'),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 4),
+                                  child: FilterChip(
+                                    avatar: const Icon(Icons.block_rounded,
+                                        size: 16),
+                                    label: Text(item.name),
+                                    selected: true,
+                                    selectedColor: Theme.of(context)
+                                        .colorScheme
+                                        .errorContainer,
+                                    onSelected: (_) =>
+                                        cubit.setExcludeItem(item, false),
+                                  ),
+                                )),
+                        ]),
                         right: header,
                       ),
                     ),

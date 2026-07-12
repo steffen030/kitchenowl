@@ -33,6 +33,9 @@ class Recipe extends Model {
   /// The household this recipe belongs to, the contained field is not complete and should only be used for external recipes
   final Household? household;
 
+  /// Non-null when an ingredient filter is active; computed client-side or from server.
+  final int? missingCount;
+
   const Recipe({
     this.id,
     this.name = '',
@@ -52,6 +55,7 @@ class Recipe extends Model {
     this.householdId,
     this.household,
     this.curated = false,
+    this.missingCount,
     this.hasFullDetails = true,
   });
 
@@ -101,6 +105,7 @@ class Recipe extends Model {
           ? Household.fromJson(map['household'])
           : null,
       curated: map['server_curated'] ?? false,
+      missingCount: map['missing_count'],
       hasFullDetails: map.containsKey('items'),
     );
   }
@@ -121,6 +126,7 @@ class Recipe extends Model {
     Set<DateTime>? plannedCookingDates,
     int? householdId,
     bool? curated,
+    int? missingCount,
     bool? hasFullDetails,
   }) =>
       Recipe(
@@ -142,6 +148,7 @@ class Recipe extends Model {
         visibility: visibility ?? this.visibility,
         householdId: householdId ?? this.householdId,
         household: this.household,
+        missingCount: missingCount ?? this.missingCount,
         hasFullDetails: hasFullDetails ?? this.hasFullDetails,
       );
 
@@ -175,6 +182,7 @@ class Recipe extends Model {
         householdId,
         household,
         curated,
+        missingCount,
         hasFullDetails,
       ];
 

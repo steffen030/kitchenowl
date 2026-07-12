@@ -69,6 +69,9 @@ class GetAllFilterRequest(Schema):
         unknown = EXCLUDE
 
     filter = fields.List(fields.String())
+    items_include = fields.List(fields.Integer(), load_default=[])
+    items_exclude = fields.List(fields.Integer(), load_default=[])
+    max_missing = fields.Integer(load_default=0, validate=lambda a: 0 <= a <= 10)
     details = fields.String(load_default="full")
 
 
